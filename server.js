@@ -20,9 +20,11 @@ app.get('/', (req, res) => {
 // Creating Schema to Store the Usernames
 var userSchema = new mongoose.Schema({
   username: String,
-  description: String,
-  duration: Number,
-  date: { type: Date, default: Date.now }
+  "description" : String,
+  "duration" : Number,
+  "date" : Date  
+},{
+    versionKey: false
 });
 
 // Create user schema
@@ -68,40 +70,34 @@ app.get("/api/exercise/users", function(req,res) {
   });
 });
 
+// Get exercise list
+app.get("/api/exercise/log", function(req,res) {
+  var userId = req.params.userId;
+});
+
 // Post exercices
 app.post("/api/exercise/add", function(req,res) {
   var userId = req.body.userId;
   var description = req.body.description;
   var duration = req.body.duration;
   var date = req.body.date;
-  
-  // TODO : Format the date to the same format used on the FCC template
-  
+    
   if ( !userId || !description || !duration ) {
-     res.send('UserId, Description and Duration are required fields to log a exercise');
+     res.send('UserId, Description and Duration are required fields to log an exercise');
      return; 
   }
-  
-  // Find by Id
-  User.findById(userId, function(err, user) {
+
+  User.findById(userId, function(err,user) {
     
     user.description = description;
     user.duration = duration;
-    user.date = date ? date : Date.now;
+    user.date = date ? date : Date.now();
     
-    // Saving
     user.save();
-    
-    // Returning
-    res.json({
-      "username" : user.username,
-      "description" : user.description,
-      "duration" : user.duration,
-      "date" : user.date,
-      "_id" : user._id
-    });
+    res.send(user);
   });
 });
+
 // Error Handling middleware
 app.use((err, req, res, next) => {
   let errCode, errMessage
