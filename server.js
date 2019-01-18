@@ -1,10 +1,11 @@
 const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
+const mongoose = require('mongoose')
+const AutoIncrement = require('mongoose-sequence')(mongoose);
 
 const cors = require('cors')
 
-const mongoose = require('mongoose')
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost/exercise-track' )
 
 app.use(cors())
@@ -20,12 +21,17 @@ app.get('/', (req, res) => {
 // Creating Schema to Store the Usernames
 var userSchema = new mongoose.Schema({
   username: String,
-  "description" : String,
-  "duration" : Number,
-  "date" : Date  
+  counter: { type: Number, default: 0 },
+  log: [{
+    description : String,
+    duration : Number,
+    date : Date  
+  }]
 },{
     versionKey: false
 });
+
+// userSchema.plugin(AutoIncrement, {inc_field: 'counter'} );
 
 // Create user schema
 var User = mongoose.model('User', userSchema);
@@ -71,8 +77,20 @@ app.get("/api/exercise/users", function(req,res) {
 });
 
 // Get exercise list
-app.get("/api/exercise/log", function(req,res) {
-  var userId = req.params.userId;
+app.get("/api/exercise/log/", function(req,res) {
+  console.log(req.query);
+  var userId = req.query.userId;
+  var from = req.query.from;
+  var to = req.query.to;
+  var limit = req.query.limit;
+  
+  // TODO : Filter by date
+  // TODO : Limit query
+  
+  console.log(userId);
+  User.find( { "_id" : userId }, function(err, doc) {
+    res.json(doc);
+  });
 });
 
 // Post exercices
@@ -80,21 +98,29 @@ app.post("/api/exercise/add", function(req,res) {
   var userId = req.body.userId;
   var description = req.body.description;
   var duration = req.body.duration;
-  var date = req.body.date;
+  var date = req.body.date ? req.body.date : Date.now();
     
   if ( !userId || !description || !duration ) {
      res.send('UserId, Description and Duration are required fields to log an exercise');
      return; 
   }
-
-  User.findById(userId, function(err,user) {
-    
-    user.description = description;
-    user.duration = duration;
-    user.date = date ? date : Date.now();
-    
-    user.save();
-    res.send(user);
+  
+  var log = {
+      description: description,
+      duration: duration,
+      date: date
+    };
+  
+  // Pushing exercise to collection and incrementing counter by one.
+  User.findByIdAndUpdate(userId, { $push: { log: log }, $inc: { counter: 1 } }, { "new": true }, function(err, user) {
+    if ( err ) res.send('something went wrong');
+    res.json({ 
+      "username": user.username,
+      "_id" : user._id,
+      "description": description,
+      "duration" : duration,
+      "date" : date
+    });
   });
 });
 
