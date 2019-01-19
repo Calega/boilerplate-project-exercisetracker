@@ -47,7 +47,6 @@ app.post("/api/exercise/new-user", function(req,res) {
           username: username
         });
 
-        // Saving shortened url
         newUsername.save();
         res.json({
           "username" : newUsername.username,
@@ -81,19 +80,24 @@ function isValidDate(d) {
 app.get("/api/exercise/log/", function(req,res) {
   let userId = req.query.userId;
   
-  User.find( { "_id" : userId }, function(err,doc) {
+  User.findById(userId, function(err,doc) {
     
+    if ( err ) {
+      res.send('something went wrong');
+      return;
+    }
+
     let logs = doc.log;
     
     let from = req.query.from;
     let to = req.query.to;
     let limit = req.query.limit;
-    
-    if ( isValidDate(to) && isValidDate(from) ) {
-      logs = logs.filter((item) => (item.date >= from && item.date <= to));  
-    } else if ( isValidDate(from) ) {
-      logs = logs.filter((item) => (item.date >= from));
-    }
+        
+    if ( isValidDate(new Date(to)) && isValidDate(new Date(from)) ) {
+      logs = logs.filter((item) => (item.date >= new Date(from) && item.date <= new Date(to)));  
+    } else if ( isValidDate(new Date(from)) ) {
+      logs = logs.filter((item) => (item.date >= new Date(from)));
+    }    
     
     // Apply limit only if is a number
     if ( !isNaN(limit) ) {
@@ -126,7 +130,11 @@ app.post("/api/exercise/add", function(req,res) {
   
   // Pushing exercise to collection and incrementing counter by one.
   User.findByIdAndUpdate(userId, { $push: { log: log }, $inc: { counter: 1 } }, { "new": true }, function(err, user) {
-    if ( err ) res.send('something went wrong');
+    if ( err ) {
+      res.send('something went wrong');
+      return;
+    }
+    
     res.json({ 
       "username": user.username,
       "_id" : user._id,
