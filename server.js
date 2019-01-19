@@ -31,22 +31,19 @@ var userSchema = new mongoose.Schema({
     versionKey: false
 });
 
-// userSchema.plugin(AutoIncrement, {inc_field: 'counter'} );
-
 // Create user schema
 var User = mongoose.model('User', userSchema);
 
 // Post new user
 app.post("/api/exercise/new-user", function(req,res) {
-  var username = req.body.username;
-  console.log(req.body);
+  let username = req.body.username;
   
   // Checking if a username already exists
   User.findOne( { username: username }, function(err, doc) {
      if (doc) {
         res.send('username already taken');
      } else {
-        var newUsername = new User({
+        let newUsername = new User({
           username: username
         });
 
@@ -65,10 +62,9 @@ app.get("/api/exercise/users", function(req,res) {
   
   // Checking if a username already exists
   User.find({}, function(err, users) {
-    var userMap = [];
+    let userMap = [];
 
     users.forEach(function(user) {
-      // userMap[user._id] = user;
       userMap.push( { "username" : user.username, "_id" : user._id } );
     });
 
@@ -76,36 +72,53 @@ app.get("/api/exercise/users", function(req,res) {
   });
 });
 
+// Function to validate if the instance is a valid date
+function isValidDate(d) {
+  return d instanceof Date && !isNaN(d);
+}
+
 // Get exercise list
 app.get("/api/exercise/log/", function(req,res) {
-  console.log(req.query);
-  var userId = req.query.userId;
-  var from = req.query.from;
-  var to = req.query.to;
-  var limit = req.query.limit;
+  let userId = req.query.userId;
   
-  // TODO : Filter by date
-  // TODO : Limit query
-  
-  console.log(userId);
-  User.find( { "_id" : userId }, function(err, doc) {
-    res.json(doc);
+  User.find( { "_id" : userId }, function(err,doc) {
+    
+    let logs = doc.log;
+    
+    let from = req.query.from;
+    let to = req.query.to;
+    let limit = req.query.limit;
+    
+    if ( isValidDate(to) && isValidDate(from) ) {
+      logs = logs.filter((item) => (item.date >= from && item.date <= to));  
+    } else if ( isValidDate(from) ) {
+      logs = logs.filter((item) => (item.date >= from));
+    }
+    
+    // Apply limit only if is a number
+    if ( !isNaN(limit) ) {
+       logs = logs.slice(0,limit); 
+    }
+    
+    res.send(logs);
   });
 });
 
 // Post exercices
 app.post("/api/exercise/add", function(req,res) {
-  var userId = req.body.userId;
-  var description = req.body.description;
-  var duration = req.body.duration;
-  var date = req.body.date ? req.body.date : Date.now();
+  let userId = req.body.userId;
+  let description = req.body.description;
+  let duration = req.body.duration;
+  let date = isValidDate(new Date(req.body.date)) ? 
+                                  new Date(req.body.date).toISOString().slice(0,10) : 
+                                  new Date().toISOString().slice(0,10);
     
   if ( !userId || !description || !duration ) {
      res.send('UserId, Description and Duration are required fields to log an exercise');
      return; 
   }
   
-  var log = {
+  let log = {
       description: description,
       duration: duration,
       date: date
